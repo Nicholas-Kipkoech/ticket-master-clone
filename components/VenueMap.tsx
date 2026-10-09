@@ -1,138 +1,168 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 type VenueMapProps = {
   venue: string;
-  location: string | null;
+  location?: string | null;
 };
 
-type Coordinates = [number, number];
+type Coordinates = {
+  lat: number;
+  lng: number;
+};
 
-const venueIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-});
+const DEFAULT_CENTER: Coordinates = {
+  lat: -1.286389,
+  lng: 36.817223,
+};
 
-function MapController({ position }: { position: Coordinates }) {
+function MapResizeHandler() {
   const map = useMap();
 
   useEffect(() => {
-    map.flyTo(position, 16, { duration: 0.8 });
-  }, [map, position]);
+    const timer = window.setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
+    return () => window.clearTimeout(timer);
+  }, [map]);
 
   return null;
 }
 
 export default function VenueMap({ venue, location }: VenueMapProps) {
-  const [position, setPosition] = useState<Coordinates | null>(null);
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
 
     async function findVenue() {
       setLoading(true);
       setError(false);
-      setPosition(null);
+      setCoordinates(null);
+
+      const query = [venue, location].filter(Boolean).join(", ");
+
+      if (!query.trim()) {
+        setLoading(false);
+        return;
+      }
 
       try {
-        const query = encodeURIComponent(
-          [venue, location].filter(Boolean).join(", "),
-        );
+        const params = new URLSearchParams({
+          q: query,
+          format: "jsonv2",
+          limit: "1",
+        });
 
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${query}`,
-          { signal: controller.signal },
+          `https://nominatim.openstreetmap.org/search?${params.toString()}`,
         );
 
         if (!response.ok) {
-          throw new Error("Location search failed");
+          throw new Error("Unable to find this venue.");
         }
 
-        const results: { lat: string; lon: string }[] = await response.json();
+        const results: Array<{
+          lat: string;
+          lon: string;
+        }> = await response.json();
 
-        if (!results.length) {
+        if (cancelled) return;
+
+        if (results.length > 0) {
+          setCoordinates({
+            lat: Number(results[0].lat),
+            lng: Number(results[0].lon),
+          });
+        } else {
           setError(true);
-          return;
         }
-
-        setPosition([Number(results[0].lat), Number(results[0].lon)]);
-      } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
-          return;
+      } catch {
+        if (!cancelled) {
+          setError(true);
         }
-
-        setError(true);
       } finally {
-        if (!controller.signal.aborted) {
+        if (!cancelled) {
           setLoading(false);
         }
       }
     }
 
-    if (!venue.trim()) {
-      return () => controller.abort();
-    }
+    findVenue();
 
-    void findVenue();
-
-    return () => controller.abort();
+    return () => {
+      cancelled = true;
+    };
   }, [venue, location]);
 
-  if (loading && venue.trim()) {
-    return (
-      <div className="flex h-64 items-center justify-center bg-(--input-bg) sm:h-80">
-        <div className="flex items-center gap-2 text-sm text-(--muted)">
-          <span className="size-4 animate-spin rounded-full border-2 border-[#1f4fd8] border-t-transparent" />
-          Finding venue on map...
-        </div>
-      </div>
-    );
-  }
+  const center = coordinates ?? DEFAULT_CENTER;
 
-  if (!venue.trim() || error || !position) {
-    return (
-      <div className="flex h-64 flex-col items-center justify-center gap-2 bg-(--input-bg) px-5 text-center sm:h-80">
-        <p className="font-semibold text-(--text)">Map location unavailable</p>
-        <p className="max-w-sm text-sm text-(--muted)">
-          We couldn&apos;t find this venue. Try adding its full street address,
-          city, and country.
-        </p>
-      </div>
-    );
-  }
+  const markerIcon = L.divIcon({
+    className: "venue-map-marker",
+    html: `       <div style="
+        width: 30px;
+        height: 30px;
+        border-radius: 50% 50% 50% 0;
+        background: #2563eb;
+        border: 3px solid white;
+        transform: rotate(-45deg);
+        box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      "></div>
+    `,
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+  });
 
   return (
-    <MapContainer
-      center={position}
-      zoom={16}
-      scrollWheelZoom
-      className="h-64 w-full sm:h-80"
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <div className="venue-map-wrapper relative mt-3 w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-gray-200">
+      {loading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100">
+          {" "}
+          <p className="text-sm text-gray-500">
+            Finding venue location...{" "}
+          </p>{" "}
+        </div>
+      )}
 
-      <MapController position={position} />
+      {error && !loading && (
+        <div className="absolute left-2 right-2 top-2 z-[500] rounded-lg bg-white/95 px-3 py-2 text-sm text-gray-700 shadow">
+          Could not find this venue. Check the venue name or location.
+        </div>
+      )}
 
-      <Marker position={position} icon={venueIcon}>
-        <Popup>
-          <div>
-            <strong>{venue}</strong>
-            {location && <p>{location}</p>}
-          </div>
-        </Popup>
-      </Marker>
-    </MapContainer>
+      <MapContainer
+        center={[center.lat, center.lng]}
+        zoom={coordinates ? 15 : 12}
+        scrollWheelZoom={false}
+        className="venue-map"
+        style={{
+          width: "100%",
+          height: "100%",
+          maxWidth: "100%",
+        }}
+      >
+        <MapResizeHandler />
+
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        {coordinates && (
+          <Marker
+            position={[coordinates.lat, coordinates.lng]}
+            icon={markerIcon}
+          />
+        )}
+      </MapContainer>
+    </div>
   );
 }
