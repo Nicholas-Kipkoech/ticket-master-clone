@@ -1286,7 +1286,12 @@ export default function Home() {
             </div>
 
             {/* Venue map */}
-            <section className="mx-5 mb-28 mt-8 overflow-hidden rounded-xl border border-(--border) bg-(--surface) sm:mx-6">
+
+            {/* More options + venue map */}
+            <div className="px-5 pt-10 sm:px-6">
+              <h2 className="text-lg font-black uppercase tracking-wide">
+                More Options
+              </h2>
               <div className="flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
                   <h2 className="font-bold text-(--text)">{selected.venue}</h2>
@@ -1300,7 +1305,6 @@ export default function Home() {
 
                 <MapPin size={22} className="shrink-0 text-[#1f4fd8]" />
               </div>
-
               {selected.venue.trim() ? (
                 <VenueMap venue={selected.venue} location={selected.location} />
               ) : (
@@ -1308,7 +1312,7 @@ export default function Home() {
                   Add a venue name to display its location on the map.
                 </div>
               )}
-            </section>
+            </div>
 
             {/* Floating Transfer / Sell pill */}
             <div className="fixed inset-x-0 bottom-6 z-30 flex justify-center">
