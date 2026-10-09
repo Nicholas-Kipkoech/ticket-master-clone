@@ -1048,7 +1048,7 @@ export default function Home() {
                       onChange={(e) =>
                         setForm({ ...form, section: e.target.value })
                       }
-                      placeholder="GA"
+                      placeholder="e.g. GA"
                       className={INPUT}
                     />
                   </div>
@@ -1060,7 +1060,7 @@ export default function Home() {
                       onChange={(e) =>
                         setForm({ ...form, seat_row: e.target.value })
                       }
-                      placeholder="GENERAL ADMISSION"
+                      placeholder="e.g 12"
                       className={INPUT}
                     />
                   </div>
@@ -1074,7 +1074,7 @@ export default function Home() {
                       onChange={(e) =>
                         setForm({ ...form, seat_number: e.target.value })
                       }
-                      placeholder="Leave empty for GA"
+                      placeholder="e.g. 167"
                       className={INPUT}
                     />
                   </div>
