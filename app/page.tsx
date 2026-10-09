@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ChangeEvent, FormEvent } from "react";
+import type { ChangeEvent, CSSProperties, FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
@@ -21,6 +21,8 @@ import {
   ArrowUpRight,
   RefreshCw,
   Copy,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 type Ticket = {
@@ -89,9 +91,48 @@ const BUCKET = "ticket-images";
 // Theme (taken from the screenshots)
 const DARK = "bg-[#26262b]";
 const BLUE = "bg-[#1f4fd8] hover:bg-[#1a43b8]";
-const GRAY = "bg-[#e4e4e7]";
+const GRAY = "bg-[var(--gray)]";
 const INPUT =
-  "w-full rounded-md border border-slate-400 bg-slate-100 p-3 text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#1f4fd8]";
+  "w-full rounded-md border border-[var(--input-border)] bg-[var(--input-bg)] p-3 text-[var(--text)] outline-none placeholder:text-[var(--placeholder)] focus:border-[#1f4fd8]";
+
+type Theme = "light" | "dark";
+
+// Every surface colour reads from these CSS variables, so switching theme
+// only swaps this object (no Tailwind dark-mode config needed).
+const THEMES: Record<Theme, CSSProperties> = {
+  light: {
+    "--bg": "#ffffff",
+    "--surface": "#ffffff",
+    "--text": "#0f172a",
+    "--muted": "#64748b",
+    "--border": "#cbd5e1",
+    "--input-bg": "#f1f5f9",
+    "--input-border": "#94a3b8",
+    "--placeholder": "#94a3b8",
+    "--gray": "#e4e4e7",
+    "--hover": "#f8fafc",
+    "--tab": "#26262b",
+    "--err-bg": "#fef2f2",
+    "--err-text": "#b91c1c",
+    "--login-bg": "#26262b",
+  } as CSSProperties,
+  dark: {
+    "--bg": "#0f0f11",
+    "--surface": "#1b1b1f",
+    "--text": "#f4f4f5",
+    "--muted": "#a1a1aa",
+    "--border": "#3a3a40",
+    "--input-bg": "#26262b",
+    "--input-border": "#52525b",
+    "--placeholder": "#71717a",
+    "--gray": "#26262b",
+    "--hover": "#2a2a30",
+    "--tab": "#ffffff",
+    "--err-bg": "#3b1414",
+    "--err-text": "#fca5a5",
+    "--login-bg": "#0b0b0d",
+  } as CSSProperties,
+};
 
 // Converts a stored ISO timestamp into the local value a datetime-local input expects.
 function toInputValue(iso: string) {
@@ -148,6 +189,7 @@ export default function Home() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [transfer, setTransfer] = useState<TransferForm>(emptyTransfer);
   const [orderCopied, setOrderCopied] = useState(false);
+  const [theme, setTheme] = useState<Theme>("light");
   const fileInput = useRef<HTMLInputElement>(null);
   const ticketsRef = useRef<HTMLDivElement>(null);
 
@@ -204,6 +246,40 @@ export default function Home() {
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  // Restore the saved theme, or follow the device setting on first visit.
+  useEffect(() => {
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("theme");
+    } catch {
+      /* storage unavailable */
+    }
+    const initial: Theme =
+      saved === "dark" || saved === "light"
+        ? saved
+        : window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+    setTheme(initial);
+  }, []);
+
+  // Keep native controls (date picker, scrollbars) and the page edge in sync.
+  useEffect(() => {
+    document.documentElement.style.colorScheme = theme;
+    document.documentElement.style.backgroundColor =
+      theme === "dark" ? "#0f0f11" : "#ffffff";
+  }, [theme]);
+
+  function toggleTheme() {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    try {
+      localStorage.setItem("theme", next);
+    } catch {
+      /* storage unavailable */
+    }
+  }
 
   function imageUrl(ticket: Ticket) {
     if (!ticket.image_path) return "";
@@ -456,9 +532,30 @@ export default function Home() {
       .includes(search.toLowerCase()),
   );
 
+  const themeStyle = THEMES[theme];
+
+  const themeButton = (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label={
+        theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+      }
+      className="flex items-center gap-2 rounded-md border border-slate-600 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10"
+    >
+      {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+      <span className="hidden sm:inline">
+        {theme === "dark" ? "Light" : "Dark"}
+      </span>
+    </button>
+  );
+
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div
+        style={themeStyle}
+        className="flex min-h-screen items-center justify-center bg-[var(--bg)]"
+      >
         <LoaderCircle className="animate-spin text-[#1f4fd8]" />
       </div>
     );
@@ -467,21 +564,23 @@ export default function Home() {
   if (!user) {
     return (
       <main
-        className={`flex min-h-screen items-center justify-center ${DARK} p-5`}
+        style={themeStyle}
+        className="relative flex min-h-screen items-center justify-center bg-[var(--login-bg)] p-5 text-[var(--text)]"
       >
+        <div className="absolute right-4 top-4">{themeButton}</div>
         <form
           onSubmit={authenticate}
-          className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl"
+          className="w-full max-w-md rounded-lg bg-[var(--surface)] p-8 shadow-xl"
         >
           <div className="mb-6 flex items-center gap-3">
             <span className="rounded-md bg-[#1f4fd8] p-3 text-white">
               <TicketIcon />
             </span>
             <div>
-              <h1 className="text-2xl font-black text-slate-950 italic">
+              <h1 className="text-2xl font-black text-[var(--text)] italic">
                 ticketmaster
               </h1>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-[var(--muted)]">
                 Your personal ticket collection
               </p>
             </div>
@@ -490,7 +589,7 @@ export default function Home() {
           <h2 className="mb-2 text-xl font-bold">
             {authMode === "login" ? "Welcome back" : "Create your account"}
           </h2>
-          <p className="mb-6 text-sm text-slate-500">
+          <p className="mb-6 text-sm text-[var(--muted)]">
             Sign in to manage your saved tickets.
           </p>
 
@@ -540,7 +639,10 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div
+      style={themeStyle}
+      className="min-h-screen bg-[var(--bg)] text-[var(--text)]"
+    >
       <header className={`sticky top-0 z-20 ${DARK} text-white`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
           <button
@@ -584,13 +686,16 @@ export default function Home() {
             </button>
           </div>
 
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="flex items-center gap-2 rounded-md border border-slate-600 px-3 py-2 text-sm font-semibold hover:bg-white/10"
-          >
-            <LogOut size={17} />
-            <span className="hidden sm:inline">Sign out</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {themeButton}
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="flex items-center gap-2 rounded-md border border-slate-600 px-3 py-2 text-sm font-semibold hover:bg-white/10"
+            >
+              <LogOut size={17} />
+              <span className="hidden sm:inline">Sign out</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -608,14 +713,14 @@ export default function Home() {
               <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
                 My Tickets
               </h1>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-[var(--muted)]">
                 {tickets.length} saved{" "}
                 {tickets.length === 1 ? "event" : "events"}
               </p>
 
               <div className="mt-6 flex items-center gap-3">
-                <div className="flex flex-1 items-center gap-2 rounded-md border border-slate-300 bg-slate-100 px-3 py-3 sm:max-w-sm">
-                  <Search size={18} className="text-slate-400" />
+                <div className="flex flex-1 items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-3 sm:max-w-sm">
+                  <Search size={18} className="text-[var(--muted)]" />
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -634,20 +739,23 @@ export default function Home() {
             </section>
 
             {error && (
-              <p className="mb-5 rounded-md bg-red-50 p-3 text-sm text-red-700">
+              <p className="mb-5 rounded-md bg-[var(--err-bg)] p-3 text-sm text-[var(--err-text)]">
                 {error}
               </p>
             )}
 
             {filtered.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-300 px-5 py-16 text-center">
-                <TicketIcon className="mx-auto mb-4 text-slate-300" size={48} />
+              <div className="rounded-lg border border-dashed border-[var(--border)] px-5 py-16 text-center">
+                <TicketIcon
+                  className="mx-auto mb-4 text-[var(--muted)]"
+                  size={48}
+                />
                 <h3 className="text-lg font-bold">
                   {search
                     ? "No matching tickets"
                     : "Your collection starts here"}
                 </h3>
-                <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500">
+                <p className="mx-auto mt-2 max-w-sm text-sm text-[var(--muted)]">
                   {search
                     ? "Try a different event name or venue."
                     : "Add your first event and keep its seat details handy."}
@@ -666,7 +774,7 @@ export default function Home() {
                 {filtered.map((ticket) => (
                   <article
                     key={ticket.id}
-                    className="overflow-hidden rounded-lg bg-white shadow-md ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl"
+                    className="overflow-hidden rounded-lg bg-[var(--surface)] shadow-md ring-1 ring-[var(--border)] transition hover:-translate-y-1 hover:shadow-xl"
                   >
                     <button
                       onClick={() => openDetails(ticket)}
@@ -725,14 +833,14 @@ export default function Home() {
                       <button
                         aria-label={`Edit ${ticket.event_name}`}
                         onClick={() => openEdit(ticket)}
-                        className="rounded-md border border-slate-300 p-2.5 hover:bg-slate-50"
+                        className="rounded-md border border-[var(--border)] p-2.5 hover:bg-[var(--hover)]"
                       >
                         <Pencil size={17} />
                       </button>
                       <button
                         aria-label={`Delete ${ticket.event_name}`}
                         onClick={() => deleteTicket(ticket)}
-                        className="rounded-md border border-slate-300 p-2.5 text-red-600 hover:bg-red-50"
+                        className="rounded-md border border-[var(--border)] p-2.5 text-red-600 hover:bg-[var(--err-bg)]"
                       >
                         <Trash2 size={17} />
                       </button>
@@ -749,16 +857,16 @@ export default function Home() {
           <section className="mx-auto max-w-2xl">
             <button
               onClick={() => setPage("list")}
-              className="mb-6 flex items-center gap-2 text-sm font-bold text-slate-600"
+              className="mb-6 flex items-center gap-2 text-sm font-bold text-[var(--muted)]"
             >
               <ArrowLeft size={18} /> Back to My Tickets
             </button>
 
-            <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-9">
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm sm:p-9">
               <h1 className="text-2xl font-black">
                 {editing ? "Edit Ticket" : "Add Ticket"}
               </h1>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-[var(--muted)]">
                 Enter the event details and upload your image.
               </p>
 
@@ -777,7 +885,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => fileInput.current?.click()}
-                    className="flex w-full flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-300 bg-slate-100 p-5 text-center hover:border-[#1f4fd8]"
+                    className="flex w-full flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-[var(--border)] bg-[var(--input-bg)] p-5 text-center hover:border-[#1f4fd8]"
                   >
                     {preview ? (
                       <img
@@ -789,7 +897,7 @@ export default function Home() {
                       <>
                         <Upload className="mb-3 text-[#1f4fd8]" size={30} />
                         <span className="font-bold">Upload event image</span>
-                        <span className="mt-1 text-xs text-slate-500">
+                        <span className="mt-1 text-xs text-[var(--muted)]">
                           JPG, PNG, or WebP, maximum 5 MB
                         </span>
                       </>
@@ -965,7 +1073,7 @@ export default function Home() {
                 </div>
 
                 {error && (
-                  <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+                  <p className="rounded-md bg-[var(--err-bg)] p-3 text-sm text-[var(--err-text)]">
                     {error}
                   </p>
                 )}
@@ -974,7 +1082,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setPage("list")}
-                    className="flex-1 rounded-md border border-slate-300 px-4 py-3 font-bold"
+                    className="flex-1 rounded-md border border-[var(--border)] px-4 py-3 font-bold"
                   >
                     Cancel
                   </button>
@@ -1050,9 +1158,9 @@ export default function Home() {
               <ScanBarcode size={22} /> View Tickets
             </button>
 
-            <div className="border-b border-slate-200">
+            <div className="border-b border-[var(--border)]">
               <div className="flex">
-                <span className="flex-1 border-b-4 border-[#26262b] py-4 text-center font-bold">
+                <span className="flex-1 border-b-4 border-[var(--tab)] py-4 text-center font-bold">
                   Tickets
                 </span>
               </div>
@@ -1071,7 +1179,7 @@ export default function Home() {
                         <button
                           onClick={() => copyOrder(selected.order_number!)}
                           aria-label="Copy order number"
-                          className="text-slate-400 hover:text-slate-700"
+                          className="text-[var(--muted)] hover:text-[var(--text)]"
                         >
                           <Copy size={16} />
                         </button>
@@ -1082,10 +1190,10 @@ export default function Home() {
                         )}
                       </>
                     ) : (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-[var(--muted)]">—</span>
                     )}
                   </h2>
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-1 text-sm text-[var(--muted)]">
                     x{selected.quantity}{" "}
                     {selected.quantity === 1 ? "Ticket" : "Tickets"}
                   </p>
@@ -1093,7 +1201,7 @@ export default function Home() {
                 <button
                   onClick={() => deleteTicket(selected)}
                   aria-label="Delete ticket"
-                  className="rounded-md p-2 text-red-600 hover:bg-red-50"
+                  className="rounded-md p-2 text-red-600 hover:bg-[var(--err-bg)]"
                 >
                   <Trash2 size={20} />
                 </button>
@@ -1104,16 +1212,16 @@ export default function Home() {
                   <p className="font-bold text-[#1f4fd8]">
                     Transferred to {selected.transferred_to}
                   </p>
-                  <p className="mt-1 text-slate-600">
+                  <p className="mt-1 text-[var(--muted)]">
                     {selected.transfer_contact}
                   </p>
                   {selected.transfer_note && (
-                    <p className="mt-1 italic text-slate-500">
+                    <p className="mt-1 italic text-[var(--muted)]">
                       “{selected.transfer_note}”
                     </p>
                   )}
                   {selected.transferred_at && (
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-[var(--muted)]">
                       {new Date(selected.transferred_at).toLocaleString()}
                     </p>
                   )}
@@ -1124,7 +1232,7 @@ export default function Home() {
                 {Array.from({ length: selected.quantity || 1 }).map((_, i) => (
                   <div key={i}>
                     <div
-                      className={`${GRAY} px-5 py-5 font-semibold text-slate-700`}
+                      className={`${GRAY} px-5 py-5 font-semibold text-[var(--text)]`}
                     >
                       {selected.ticket_type || "General Admission"}
                     </div>
@@ -1132,26 +1240,26 @@ export default function Home() {
                       className={`${GRAY} mt-0.5 grid grid-cols-[1fr_2fr_1fr] gap-3 px-5 py-5`}
                     >
                       <div>
-                        <p className="text-xs font-semibold tracking-wide text-slate-500">
+                        <p className="text-xs font-semibold tracking-wide text-[var(--muted)]">
                           SECTION
                         </p>
-                        <p className="mt-1 font-bold text-slate-800">
+                        <p className="mt-1 font-bold text-[var(--text)]">
                           {selected.section || "-"}
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xs font-semibold tracking-wide text-slate-500">
+                        <p className="text-xs font-semibold tracking-wide text-[var(--muted)]">
                           ROW
                         </p>
-                        <p className="mt-1 font-bold text-slate-800">
+                        <p className="mt-1 font-bold text-[var(--text)]">
                           {selected.seat_row || "-"}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs font-semibold tracking-wide text-slate-500">
+                        <p className="text-xs font-semibold tracking-wide text-[var(--muted)]">
                           SEAT
                         </p>
-                        <p className="mt-1 font-bold text-slate-800">
+                        <p className="mt-1 font-bold text-[var(--text)]">
                           {selected.seat_number || "-"}
                         </p>
                       </div>
@@ -1163,7 +1271,7 @@ export default function Home() {
 
             {/* Floating Transfer / Sell pill */}
             <div className="fixed inset-x-0 bottom-6 z-30 flex justify-center">
-              <div className="flex overflow-hidden rounded-full bg-white shadow-[0_8px_30px_rgba(0,0,0,0.25)] ring-1 ring-slate-200">
+              <div className="flex overflow-hidden rounded-full bg-[var(--surface)] shadow-[0_8px_30px_rgba(0,0,0,0.25)] ring-1 ring-[var(--border)]">
                 <button
                   onClick={() => {
                     setTransfer(emptyTransfer);
@@ -1171,14 +1279,14 @@ export default function Home() {
                     setTransferOpen(true);
                   }}
                   disabled={!!selected.transferred_to}
-                  className="flex w-28 flex-col items-center gap-1 px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-40"
+                  className="flex w-28 flex-col items-center gap-1 px-4 py-3 text-sm font-semibold text-[var(--text)] hover:bg-[var(--hover)] disabled:opacity-40"
                 >
                   <ArrowUpRight size={22} className="text-[#1f4fd8]" />
                   Transfer
                 </button>
                 <button
                   disabled
-                  className="flex w-28 cursor-not-allowed flex-col items-center gap-1 border-l border-slate-200 px-4 py-3 text-sm font-semibold text-slate-300"
+                  className="flex w-28 cursor-not-allowed flex-col items-center gap-1 border-l border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--muted)] opacity-60"
                 >
                   <RefreshCw size={22} />
                   Sell
@@ -1194,9 +1302,9 @@ export default function Home() {
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60 sm:items-center">
           <form
             onSubmit={submitTransfer}
-            className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white sm:rounded-2xl"
+            className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[var(--surface)] sm:rounded-2xl"
           >
-            <div className="border-b border-slate-300 py-3 text-center text-xs font-semibold tracking-wide text-slate-700">
+            <div className="border-b border-[var(--border)] py-3 text-center text-xs font-semibold tracking-wide text-[var(--text)]">
               TRANSFER TICKETS
             </div>
 
@@ -1211,7 +1319,7 @@ export default function Home() {
               </p>
 
               <div>
-                <label className="mb-2 block font-bold text-slate-700">
+                <label className="mb-2 block font-bold text-[var(--text)]">
                   First Name
                 </label>
                 <input
@@ -1225,7 +1333,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="mb-2 block font-bold text-slate-700">
+                <label className="mb-2 block font-bold text-[var(--text)]">
                   Last Name
                 </label>
                 <input
@@ -1239,7 +1347,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="mb-2 block font-bold text-slate-700">
+                <label className="mb-2 block font-bold text-[var(--text)]">
                   Email or Mobile Number
                 </label>
                 <input
@@ -1253,7 +1361,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="mb-2 block font-bold text-slate-700">
+                <label className="mb-2 block font-bold text-[var(--text)]">
                   Note
                 </label>
                 <textarea
@@ -1268,13 +1376,13 @@ export default function Home() {
               </div>
 
               {error && (
-                <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+                <p className="rounded-md bg-[var(--err-bg)] p-3 text-sm text-[var(--err-text)]">
                   {error}
                 </p>
               )}
             </div>
 
-            <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
+            <div className="flex items-center justify-between border-t border-[var(--border)] px-6 py-4">
               <button
                 type="button"
                 onClick={() => setTransferOpen(false)}
