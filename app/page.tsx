@@ -1258,7 +1258,9 @@ export default function Home() {
                           SEAT
                         </p>
                         <p className="mt-1 font-bold text-(--text)">
-                          {selected.seat_number || "-"}
+                          {selected.seat_number
+                            ? String(Number(selected.seat_number) + i)
+                            : i + 1}
                         </p>
                       </div>
                     </div>
