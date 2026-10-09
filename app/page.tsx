@@ -25,6 +25,7 @@ import {
   Moon,
   StarCheck,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 
 type Ticket = {
   id: string;
@@ -170,6 +171,13 @@ function dateLabel(value: string) {
 function venueLabel(ticket: Ticket) {
   return [ticket.venue, ticket.location].filter(Boolean).join(", ");
 }
+
+const VenueMap = dynamic(() => import("@/components/VenueMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-64 w-full animate-pulse bg-(--input-bg) sm:h-80" />
+  ),
+});
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -780,6 +788,7 @@ export default function Home() {
                             alt={ticket.event_name}
                             width={960}
                             height={384}
+                            loading="eager"
                             unoptimized
                             className="h-48 w-full object-cover"
                           />
@@ -962,7 +971,7 @@ export default function Home() {
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-bold">
-                      City, country
+                      Venue address or city
                     </label>
                     <input
                       maxLength={200}
@@ -970,9 +979,13 @@ export default function Home() {
                       onChange={(e) =>
                         setForm({ ...form, location: e.target.value })
                       }
-                      placeholder="e.g. London, GB"
+                      placeholder="e.g. Madison Square Garden, New York, NY"
                       className={INPUT}
                     />
+                    <p className="mt-2 text-xs text-(--muted)">
+                      Tip: Enter the full street address or venue name plus city
+                      and country for a more accurate map pin.
+                    </p>
                   </div>
                 </div>
 
@@ -1109,6 +1122,7 @@ export default function Home() {
                   sizes="(max-width: 640px) 100vw, 768px"
                   unoptimized
                   className="object-cover object-top"
+                  loading="eager"
                 />
               ) : (
                 <div className="flex h-72 items-center justify-center bg-linear-to-br from-[#26262b] to-black text-white sm:h-96">
@@ -1259,7 +1273,9 @@ export default function Home() {
                         </p>
                         <p className="mt-1 font-bold text-(--text)">
                           {selected.seat_number
-                            ? String(Number(selected.seat_number) + i)
+                            ? /^\d+$/.test(selected.seat_number.trim())
+                              ? String(Number(selected.seat_number) + i)
+                              : selected.seat_number
                             : i + 1}
                         </p>
                       </div>
@@ -1268,6 +1284,31 @@ export default function Home() {
                 ))}
               </div>
             </div>
+
+            {/* Venue map */}
+            <section className="mx-5 mb-28 mt-8 overflow-hidden rounded-xl border border-(--border) bg-(--surface) sm:mx-6">
+              <div className="flex items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <h2 className="font-bold text-(--text)">{selected.venue}</h2>
+
+                  <p className="mt-1 flex items-start gap-2 text-sm text-(--muted)">
+                    <MapPin size={16} className="mt-0.5 shrink-0" />
+
+                    <span>{selected.location || "Location not provided"}</span>
+                  </p>
+                </div>
+
+                <MapPin size={22} className="shrink-0 text-[#1f4fd8]" />
+              </div>
+
+              {selected.venue.trim() ? (
+                <VenueMap venue={selected.venue} location={selected.location} />
+              ) : (
+                <div className="px-4 pb-4 text-sm text-(--muted)">
+                  Add a venue name to display its location on the map.
+                </div>
+              )}
+            </section>
 
             {/* Floating Transfer / Sell pill */}
             <div className="fixed inset-x-0 bottom-6 z-30 flex justify-center">
