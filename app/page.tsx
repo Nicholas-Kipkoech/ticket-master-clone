@@ -478,7 +478,9 @@ export default function Home() {
               <TicketIcon />
             </span>
             <div>
-              <h1 className="text-2xl font-black text-slate-950">TicketHub</h1>
+              <h1 className="text-2xl font-black text-slate-950 italic">
+                ticketmaster
+              </h1>
               <p className="text-sm text-slate-500">
                 Your personal ticket collection
               </p>
@@ -551,7 +553,9 @@ export default function Home() {
             <span className="rounded-md bg-[#1f4fd8] p-2 text-white">
               <TicketIcon size={22} />
             </span>
-            <span className="text-xl font-black tracking-tight">TicketHub</span>
+            <span className="text-xl font-black tracking-tight italic">
+              ticketmaster
+            </span>
           </button>
 
           <div className="hidden items-center gap-7 text-sm font-semibold md:flex">
