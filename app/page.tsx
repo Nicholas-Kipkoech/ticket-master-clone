@@ -23,6 +23,7 @@ import {
   Copy,
   Sun,
   Moon,
+  StarCheck,
 } from "lucide-react";
 
 type Ticket = {
@@ -93,7 +94,7 @@ const DARK = "bg-[#26262b]";
 const BLUE = "bg-[#1f4fd8] hover:bg-[#1a43b8]";
 const GRAY = "bg-[var(--gray)]";
 const INPUT =
-  "w-full rounded-md border border-[var(--input-border)] bg-[var(--input-bg)] p-3 text-[var(--text)] outline-none placeholder:text-[var(--placeholder)] focus:border-[#1f4fd8]";
+  "w-full rounded-md border border-[var(--input-border)] bg-[var(--input-bg)] p-3 text-(--text) outline-none placeholder:text-[var(--placeholder)] focus:border-[#1f4fd8]";
 
 type Theme = "light" | "dark";
 
@@ -189,7 +190,22 @@ export default function Home() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [transfer, setTransfer] = useState<TransferForm>(emptyTransfer);
   const [orderCopied, setOrderCopied] = useState(false);
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "light";
+
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("theme");
+    } catch {
+      /* storage unavailable */
+    }
+
+    return saved === "dark" || saved === "light"
+      ? saved
+      : window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+  });
   const fileInput = useRef<HTMLInputElement>(null);
   const ticketsRef = useRef<HTMLDivElement>(null);
 
@@ -245,23 +261,6 @@ export default function Home() {
       active = false;
       listener.subscription.unsubscribe();
     };
-  }, []);
-
-  // Restore the saved theme, or follow the device setting on first visit.
-  useEffect(() => {
-    let saved: string | null = null;
-    try {
-      saved = localStorage.getItem("theme");
-    } catch {
-      /* storage unavailable */
-    }
-    const initial: Theme =
-      saved === "dark" || saved === "light"
-        ? saved
-        : window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light";
-    setTheme(initial);
   }, []);
 
   // Keep native controls (date picker, scrollbars) and the page edge in sync.
@@ -554,7 +553,7 @@ export default function Home() {
     return (
       <div
         style={themeStyle}
-        className="flex min-h-screen items-center justify-center bg-[var(--bg)]"
+        className="flex min-h-screen items-center justify-center bg-(--bg)"
       >
         <LoaderCircle className="animate-spin text-[#1f4fd8]" />
       </div>
@@ -565,22 +564,22 @@ export default function Home() {
     return (
       <main
         style={themeStyle}
-        className="relative flex min-h-screen items-center justify-center bg-[var(--login-bg)] p-5 text-[var(--text)]"
+        className="relative flex min-h-screen items-center justify-center bg-(--login-bg) p-5 text-(--text)"
       >
         <div className="absolute right-4 top-4">{themeButton}</div>
         <form
           onSubmit={authenticate}
-          className="w-full max-w-md rounded-lg bg-[var(--surface)] p-8 shadow-xl"
+          className="w-full max-w-md rounded-lg bg-(--surface) p-8 shadow-xl"
         >
           <div className="mb-6 flex items-center gap-3">
             <span className="rounded-md bg-[#1f4fd8] p-3 text-white">
               <TicketIcon />
             </span>
             <div>
-              <h1 className="text-2xl font-black text-[var(--text)] italic">
+              <h1 className="text-2xl font-black text-(--text) italic">
                 ticketmaster
               </h1>
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-(--muted)">
                 Your personal ticket collection
               </p>
             </div>
@@ -589,7 +588,7 @@ export default function Home() {
           <h2 className="mb-2 text-xl font-bold">
             {authMode === "login" ? "Welcome back" : "Create your account"}
           </h2>
-          <p className="mb-6 text-sm text-[var(--muted)]">
+          <p className="mb-6 text-sm text-(--muted)">
             Sign in to manage your saved tickets.
           </p>
 
@@ -639,10 +638,7 @@ export default function Home() {
   }
 
   return (
-    <div
-      style={themeStyle}
-      className="min-h-screen bg-[var(--bg)] text-[var(--text)]"
-    >
+    <div style={themeStyle} className="min-h-screen bg-(--bg) text-(--text)">
       <header className={`sticky top-0 z-20 ${DARK} text-white`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
           <button
@@ -713,14 +709,14 @@ export default function Home() {
               <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
                 My Tickets
               </h1>
-              <p className="mt-2 text-sm text-[var(--muted)]">
+              <p className="mt-2 text-sm text-(--muted)">
                 {tickets.length} saved{" "}
                 {tickets.length === 1 ? "event" : "events"}
               </p>
 
               <div className="mt-6 flex items-center gap-3">
-                <div className="flex flex-1 items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-3 sm:max-w-sm">
-                  <Search size={18} className="text-[var(--muted)]" />
+                <div className="flex flex-1 items-center gap-2 rounded-md border border-(--border) bg-(--input-bg) px-3 py-3 sm:max-w-sm">
+                  <Search size={18} className="text-(--muted)" />
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -739,23 +735,20 @@ export default function Home() {
             </section>
 
             {error && (
-              <p className="mb-5 rounded-md bg-[var(--err-bg)] p-3 text-sm text-[var(--err-text)]">
+              <p className="mb-5 rounded-md bg-(--err-bg) p-3 text-sm text-(--err-text)">
                 {error}
               </p>
             )}
 
             {filtered.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-[var(--border)] px-5 py-16 text-center">
-                <TicketIcon
-                  className="mx-auto mb-4 text-[var(--muted)]"
-                  size={48}
-                />
+              <div className="rounded-lg border border-dashed border-(--border) px-5 py-16 text-center">
+                <TicketIcon className="mx-auto mb-4 text-(--muted)" size={48} />
                 <h3 className="text-lg font-bold">
                   {search
                     ? "No matching tickets"
                     : "Your collection starts here"}
                 </h3>
-                <p className="mx-auto mt-2 max-w-sm text-sm text-[var(--muted)]">
+                <p className="mx-auto mt-2 max-w-sm text-sm text-(--muted)">
                   {search
                     ? "Try a different event name or venue."
                     : "Add your first event and keep its seat details handy."}
@@ -774,7 +767,7 @@ export default function Home() {
                 {filtered.map((ticket) => (
                   <article
                     key={ticket.id}
-                    className="overflow-hidden rounded-lg bg-[var(--surface)] shadow-md ring-1 ring-[var(--border)] transition hover:-translate-y-1 hover:shadow-xl"
+                    className="overflow-hidden rounded-lg bg-(--surface) shadow-md ring-1 ring-(--border) transition hover:-translate-y-1 hover:shadow-xl"
                   >
                     <button
                       onClick={() => openDetails(ticket)}
@@ -791,7 +784,7 @@ export default function Home() {
                             className="h-48 w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-48 items-center justify-center bg-gradient-to-br from-[#26262b] to-[#0f0f12] text-white">
+                          <div className="flex h-48 items-center justify-center bg-linear-to-br from-[#26262b] to-[#0f0f12] text-white">
                             <TicketIcon size={56} />
                           </div>
                         )}
@@ -833,14 +826,14 @@ export default function Home() {
                       <button
                         aria-label={`Edit ${ticket.event_name}`}
                         onClick={() => openEdit(ticket)}
-                        className="rounded-md border border-[var(--border)] p-2.5 hover:bg-[var(--hover)]"
+                        className="rounded-md border border-(--border) p-2.5 hover:bg-(--hover)"
                       >
                         <Pencil size={17} />
                       </button>
                       <button
                         aria-label={`Delete ${ticket.event_name}`}
                         onClick={() => deleteTicket(ticket)}
-                        className="rounded-md border border-[var(--border)] p-2.5 text-red-600 hover:bg-[var(--err-bg)]"
+                        className="rounded-md border border-(--border) p-2.5 text-red-600 hover:bg-(--err-bg)"
                       >
                         <Trash2 size={17} />
                       </button>
@@ -857,16 +850,16 @@ export default function Home() {
           <section className="mx-auto max-w-2xl">
             <button
               onClick={() => setPage("list")}
-              className="mb-6 flex items-center gap-2 text-sm font-bold text-[var(--muted)]"
+              className="mb-6 flex items-center gap-2 text-sm font-bold text-(--muted)"
             >
               <ArrowLeft size={18} /> Back to My Tickets
             </button>
 
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm sm:p-9">
+            <div className="rounded-lg border border-(--border) bg-(--surface) p-6 shadow-sm sm:p-9">
               <h1 className="text-2xl font-black">
                 {editing ? "Edit Ticket" : "Add Ticket"}
               </h1>
-              <p className="mt-2 text-sm text-[var(--muted)]">
+              <p className="mt-2 text-sm text-(--muted)">
                 Enter the event details and upload your image.
               </p>
 
@@ -885,19 +878,21 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => fileInput.current?.click()}
-                    className="flex w-full flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-[var(--border)] bg-[var(--input-bg)] p-5 text-center hover:border-[#1f4fd8]"
+                    className="flex w-full flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-(--border) bg-(--input-bg) p-5 text-center hover:border-[#1f4fd8]"
                   >
                     {preview ? (
-                      <img
+                      <Image
                         src={preview}
                         alt="Event preview"
+                        width={1200}
+                        height={600}
                         className="max-h-64 w-full rounded-md object-cover"
                       />
                     ) : (
                       <>
                         <Upload className="mb-3 text-[#1f4fd8]" size={30} />
                         <span className="font-bold">Upload event image</span>
-                        <span className="mt-1 text-xs text-[var(--muted)]">
+                        <span className="mt-1 text-xs text-(--muted)">
                           JPG, PNG, or WebP, maximum 5 MB
                         </span>
                       </>
@@ -1105,15 +1100,18 @@ export default function Home() {
         {/* ───────────── DETAILS ───────────── */}
         {page === "details" && selected && (
           <section className="mx-auto max-w-3xl pb-32">
-            <div className="relative">
+            <div className="relative h-72 sm:h-96">
               {selected.image_path ? (
-                <img
+                <Image
                   src={imageUrl(selected)}
                   alt={selected.event_name}
-                  className="h-72 w-full object-cover object-top sm:h-96"
+                  fill
+                  sizes="(max-width: 640px) 100vw, 768px"
+                  unoptimized
+                  className="object-cover object-top"
                 />
               ) : (
-                <div className="flex h-72 items-center justify-center bg-gradient-to-br from-[#26262b] to-black text-white sm:h-96">
+                <div className="flex h-72 items-center justify-center bg-linear-to-br from-[#26262b] to-black text-white sm:h-96">
                   <TicketIcon size={76} />
                 </div>
               )}
@@ -1128,7 +1126,7 @@ export default function Home() {
                 onClick={() => openEdit(selected)}
                 className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-black/60"
               >
-                <Pencil size={15} /> Edit
+                <StarCheck size={15} />
               </button>
               <span
                 className={`absolute bottom-0 left-0 ${DARK} px-4 py-3 text-sm font-bold tracking-wide text-white`}
@@ -1179,7 +1177,7 @@ export default function Home() {
                         <button
                           onClick={() => copyOrder(selected.order_number!)}
                           aria-label="Copy order number"
-                          className="text-[var(--muted)] hover:text-[var(--text)]"
+                          className="text-(--muted) hover:text-(--text)"
                         >
                           <Copy size={16} />
                         </button>
@@ -1190,10 +1188,10 @@ export default function Home() {
                         )}
                       </>
                     ) : (
-                      <span className="text-[var(--muted)]">—</span>
+                      <span className="text-(--muted)">—</span>
                     )}
                   </h2>
-                  <p className="mt-1 text-sm text-[var(--muted)]">
+                  <p className="mt-1 text-sm text-(--muted)">
                     x{selected.quantity}{" "}
                     {selected.quantity === 1 ? "Ticket" : "Tickets"}
                   </p>
@@ -1212,16 +1210,16 @@ export default function Home() {
                   <p className="font-bold text-[#1f4fd8]">
                     Transferred to {selected.transferred_to}
                   </p>
-                  <p className="mt-1 text-[var(--muted)]">
+                  <p className="mt-1 text-(--muted)">
                     {selected.transfer_contact}
                   </p>
                   {selected.transfer_note && (
-                    <p className="mt-1 italic text-[var(--muted)]">
+                    <p className="mt-1 italic text-(--muted)">
                       “{selected.transfer_note}”
                     </p>
                   )}
                   {selected.transferred_at && (
-                    <p className="mt-1 text-xs text-[var(--muted)]">
+                    <p className="mt-1 text-xs text-(--muted)">
                       {new Date(selected.transferred_at).toLocaleString()}
                     </p>
                   )}
@@ -1232,7 +1230,7 @@ export default function Home() {
                 {Array.from({ length: selected.quantity || 1 }).map((_, i) => (
                   <div key={i}>
                     <div
-                      className={`${GRAY} px-5 py-5 font-semibold text-[var(--text)]`}
+                      className={`${GRAY} px-5 py-5 font-semibold text-(--text)`}
                     >
                       {selected.ticket_type || "General Admission"}
                     </div>
@@ -1240,26 +1238,26 @@ export default function Home() {
                       className={`${GRAY} mt-0.5 grid grid-cols-[1fr_2fr_1fr] gap-3 px-5 py-5`}
                     >
                       <div>
-                        <p className="text-xs font-semibold tracking-wide text-[var(--muted)]">
+                        <p className="text-xs font-semibold tracking-wide text-(--muted)">
                           SECTION
                         </p>
-                        <p className="mt-1 font-bold text-[var(--text)]">
+                        <p className="mt-1 font-bold text-(--text)">
                           {selected.section || "-"}
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xs font-semibold tracking-wide text-[var(--muted)]">
+                        <p className="text-xs font-semibold tracking-wide text-(--muted)">
                           ROW
                         </p>
-                        <p className="mt-1 font-bold text-[var(--text)]">
+                        <p className="mt-1 font-bold text-(--text)">
                           {selected.seat_row || "-"}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs font-semibold tracking-wide text-[var(--muted)]">
+                        <p className="text-xs font-semibold tracking-wide text-(--muted)">
                           SEAT
                         </p>
-                        <p className="mt-1 font-bold text-[var(--text)]">
+                        <p className="mt-1 font-bold text-(--text)">
                           {selected.seat_number || "-"}
                         </p>
                       </div>
@@ -1279,14 +1277,14 @@ export default function Home() {
                     setTransferOpen(true);
                   }}
                   disabled={!!selected.transferred_to}
-                  className="flex w-28 flex-col items-center gap-1 px-4 py-3 text-sm font-semibold text-[var(--text)] hover:bg-[var(--hover)] disabled:opacity-40"
+                  className="flex w-28 flex-col items-center gap-1 px-4 py-3 text-sm font-semibold text-(--text) hover:bg-[var(--hover)] disabled:opacity-40"
                 >
                   <ArrowUpRight size={22} className="text-[#1f4fd8]" />
                   Transfer
                 </button>
                 <button
                   disabled
-                  className="flex w-28 cursor-not-allowed flex-col items-center gap-1 border-l border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--muted)] opacity-60"
+                  className="flex w-28 cursor-not-allowed flex-col items-center gap-1 border-l border-[var(--border)] px-4 py-3 text-sm font-semibold text-(--muted) opacity-60"
                 >
                   <RefreshCw size={22} />
                   Sell
@@ -1304,7 +1302,7 @@ export default function Home() {
             onSubmit={submitTransfer}
             className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[var(--surface)] sm:rounded-2xl"
           >
-            <div className="border-b border-[var(--border)] py-3 text-center text-xs font-semibold tracking-wide text-[var(--text)]">
+            <div className="border-b border-[var(--border)] py-3 text-center text-xs font-semibold tracking-wide text-(--text)">
               TRANSFER TICKETS
             </div>
 
@@ -1319,7 +1317,7 @@ export default function Home() {
               </p>
 
               <div>
-                <label className="mb-2 block font-bold text-[var(--text)]">
+                <label className="mb-2 block font-bold text-(--text)">
                   First Name
                 </label>
                 <input
@@ -1333,7 +1331,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="mb-2 block font-bold text-[var(--text)]">
+                <label className="mb-2 block font-bold text-(--text)">
                   Last Name
                 </label>
                 <input
@@ -1347,7 +1345,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="mb-2 block font-bold text-[var(--text)]">
+                <label className="mb-2 block font-bold text-(--text)">
                   Email or Mobile Number
                 </label>
                 <input
@@ -1361,7 +1359,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="mb-2 block font-bold text-[var(--text)]">
+                <label className="mb-2 block font-bold text-(--text)">
                   Note
                 </label>
                 <textarea
